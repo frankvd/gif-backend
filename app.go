@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/draw"
@@ -10,8 +12,10 @@ import (
 	_ "image/png"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/codegangsta/negroni"
+	"github.com/dgrijalva/jwt-go"
 )
 
 var hasher = sha256.New()
@@ -35,7 +39,29 @@ func getFileName(imgName string) string {
 	return fmt.Sprintf(dir+"%x", imgFileName)
 }
 
+func hmacKeyFunc(t *jwt.Token) (interface{}, error) {
+	if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		return nil, fmt.Errorf("Unexpected signing method: %v", t.Header["alg"])
+	}
+	return []byte("super_secret_key"), nil
+}
+
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	token, err := jwt.ParseFromRequest(r, hmacKeyFunc)
+
+	if err != nil || !token.Valid {
+		fmt.Printf("%v", token.Valid)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	bgForm, _, _ := r.FormFile("background")
 	imgForm, _, _ := r.FormFile("image")
 
@@ -52,6 +78,20 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func imageHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	token, err := jwt.ParseFromRequest(r, hmacKeyFunc)
+
+	if err != nil || !token.Valid {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	bgFile, _ := os.Open(getFileName("bg"))
 	imgFile, _ := os.Open(getFileName("img"))
 
@@ -60,9 +100,21 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	m := image.NewRGBA(dst.Bounds())
 	pt := new(image.Point)
 	draw.Draw(m, m.Bounds(), dst, *pt, draw.Src)
+
+	x, err := strconv.Atoi(r.URL.Query().Get("x"))
+	if err != nil {
+		x = 0
+	}
+	y, err := strconv.Atoi(r.URL.Query().Get("y"))
+	if err != nil {
+		y = 0
+	}
+	pt.X = x
+	pt.Y = y
 	draw.Draw(m, m.Bounds(), src, *pt, draw.Over)
 
-	w.Header().Set("Content-Type", "image/gif")
+	buffer := new(bytes.Buffer)
+	gif.Encode(buffer, m, nil)
 
-	gif.Encode(w, m, nil)
+	fmt.Fprint(w, base64.StdEncoding.EncodeToString(buffer.Bytes()))
 }
