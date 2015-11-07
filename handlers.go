@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/draw"
 	"image/gif"
+	"image/png"
 	"net/http"
 	"os"
 	"strconv"
@@ -20,31 +21,46 @@ func getFileName(imgName string) string {
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
-	bgForm, _, _ := r.FormFile("background")
-	imgForm, _, _ := r.FormFile("image")
+	gfForm, _, err := r.FormFile("gif")
+	overlayForm, _, err := r.FormFile("overlay")
 
-	bg, _, _ := image.Decode(bgForm)
-	img, _, _ := image.Decode(imgForm)
+	if err != nil {
+		fmt.Fprint(w, "error reading images")
+		panic(err)
+	}
 
-	bgFile, _ := os.Create(getFileName("bg"))
-	defer bgFile.Close()
-	gif.Encode(bgFile, bg, nil)
+	gf, _ := gif.DecodeAll(gfForm)
+	overlay, _, _ := image.Decode(overlayForm)
 
-	imgFile, _ := os.Create(getFileName("img"))
-	defer imgFile.Close()
-	gif.Encode(imgFile, img, nil)
+	gfFile, _ := os.Create(getFileName("gif"))
+	defer gfFile.Close()
+	gif.EncodeAll(gfFile, gf)
+
+	overlayFile, _ := os.Create(getFileName("overlay"))
+	defer overlayFile.Close()
+	png.Encode(overlayFile, overlay)
 }
 
 func imageHandler(w http.ResponseWriter, r *http.Request) {
-	bgFile, _ := os.Open(getFileName("bg"))
-	imgFile, _ := os.Open(getFileName("img"))
+	gfFile, err := os.Open(getFileName("gif"))
+	overlayFile, err := os.Open(getFileName("overlay"))
 
-	dst, _, _ := image.Decode(bgFile)
-	src, _, _ := image.Decode(imgFile)
-	m := image.NewRGBA(dst.Bounds())
+	if err != nil {
+		fmt.Fprint(w, "error reading images")
+		panic(err)
+	}
+
+	// Decode images
+	dst, err := gif.DecodeAll(gfFile)
+	src, _, err := image.Decode(overlayFile)
+
+	if err != nil {
+		fmt.Fprint(w, "error decoding images")
+		panic(err)
+	}
+
+	// Create location for the draw
 	pt := new(image.Point)
-	draw.Draw(m, m.Bounds(), dst, *pt, draw.Src)
-
 	x, err := strconv.Atoi(r.URL.Query().Get("x"))
 	if err != nil {
 		x = 0
@@ -55,10 +71,13 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	pt.X = x
 	pt.Y = y
-	draw.Draw(m, m.Bounds(), src, *pt, draw.Over)
+	// Draw the overlay over each frame of the GIF
+	for _, frame := range dst.Image {
+		draw.Draw(frame, frame.Bounds(), src, *pt, draw.Over)
+	}
 
+	// Encode image to base64
 	buffer := new(bytes.Buffer)
-	gif.Encode(buffer, m, nil)
-
+	gif.EncodeAll(buffer, dst)
 	fmt.Fprint(w, base64.StdEncoding.EncodeToString(buffer.Bytes()))
 }
