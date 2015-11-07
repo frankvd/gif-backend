@@ -17,7 +17,11 @@ var config Config
 
 func main() {
 	config = readConfig("./config.json")
-	rds, _ = redis.Dial("tcp", config.RedisHost)
+	var err error
+	rds, err = redis.Dial("tcp", config.RedisHost)
+	if err != nil {
+		panic(err)
+	}
 	hasher = sha256.New()
 	n := negroni.Classic()
 	// Register middleware

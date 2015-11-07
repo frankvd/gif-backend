@@ -58,11 +58,13 @@ func rateLimitMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 // Rate limit api call
 func rateLimit(username string) bool {
 	limitKey := username + ":" + time.Now().Format("2006-01-02")
-	current, err := redis.Int(rds.Do("GET", limitKey))
+	reply, err := rds.Do("GET", limitKey)
 
 	if err != nil {
 		panic(err)
 	}
+
+	current, _ := redis.Int(reply, nil)
 
 	if current > 5 {
 		return false
