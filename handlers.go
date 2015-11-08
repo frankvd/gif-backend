@@ -35,35 +35,35 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	token, _ := jwt.ParseFromRequest(r, hmacKeyFunc)
 	issuer := token.Claims["iss"].(string)
 
-	gfForm, _, err := r.FormFile("gif")
-	overlayForm, _, err := r.FormFile("overlay")
+	gfForm, _, err1 := r.FormFile("gif")
+	overlayForm, _, err2 := r.FormFile("overlay")
 
-	if err != nil {
+	if err1 != nil || err2 != nil {
 		sendResponse(w, 400, map[string]string{
 			"error": "Error while reading images",
 		})
 		return
 	}
 
-	gf, err := gif.DecodeAll(gfForm)
-	overlay, _, err := image.Decode(overlayForm)
+	gf, err1 := gif.DecodeAll(gfForm)
+	overlay, _, err2 := image.Decode(overlayForm)
 
-	if err != nil {
+	if err1 != nil || err2 != nil {
 		sendResponse(w, 400, map[string]string{
 			"error": "Error while decoding images",
 		})
 		return
 	}
 
-	gfFile, err := os.Create(getFileName("gif:" + issuer))
+	gfFile, err1 := os.Create(getFileName("gif:" + issuer))
 	defer gfFile.Close()
 	gif.EncodeAll(gfFile, gf)
 
-	overlayFile, err := os.Create(getFileName("overlay:" + issuer))
+	overlayFile, err2 := os.Create(getFileName("overlay:" + issuer))
 	defer overlayFile.Close()
 	png.Encode(overlayFile, overlay)
 
-	if err != nil {
+	if err1 != nil || err2 != nil {
 		sendResponse(w, 400, map[string]string{
 			"error": "Error while saving images",
 		})
@@ -77,10 +77,10 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	token, _ := jwt.ParseFromRequest(r, hmacKeyFunc)
 	issuer := token.Claims["iss"].(string)
 
-	gfFile, err := os.Open(getFileName("gif:" + issuer))
-	overlayFile, err := os.Open(getFileName("overlay:" + issuer))
+	gfFile, err1 := os.Open(getFileName("gif:" + issuer))
+	overlayFile, err2 := os.Open(getFileName("overlay:" + issuer))
 
-	if err != nil {
+	if err1 != nil || err2 != nil {
 		sendResponse(w, 400, map[string]string{
 			"error": "Error while reading images",
 		})
@@ -88,10 +88,10 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Decode images
-	dst, err := gif.DecodeAll(gfFile)
-	src, _, err := image.Decode(overlayFile)
+	dst, err1 := gif.DecodeAll(gfFile)
+	src, _, err2 := image.Decode(overlayFile)
 
-	if err != nil {
+	if err1 != nil || err2 != nil {
 		sendResponse(w, 400, map[string]string{
 			"error": "Error while decoding images",
 		})
