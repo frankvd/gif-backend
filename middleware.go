@@ -9,6 +9,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
+// Returns the HMAC key set in the config
 func hmacKeyFunc(t *jwt.Token) (interface{}, error) {
 	if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 		return nil, fmt.Errorf("Unexpected signing method: %v", t.Header["alg"])
@@ -16,6 +17,7 @@ func hmacKeyFunc(t *jwt.Token) (interface{}, error) {
 	return []byte(config.HMACSecret), nil
 }
 
+// Validates the JWT token in the Authorization header
 func authMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	token, err := jwt.ParseFromRequest(r, hmacKeyFunc)
 
@@ -31,6 +33,7 @@ func authMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFun
 	next(w, r)
 }
 
+// Sets correct CORS headers
 func corsMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	w.Header().Set("Access-Control-Allow-Origin", config.FrontendHost)
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
@@ -41,6 +44,7 @@ func corsMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFun
 	next(w, r)
 }
 
+// Rate limit middleware
 func rateLimitMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	token, err := jwt.ParseFromRequest(r, hmacKeyFunc)
 	if err != nil {
