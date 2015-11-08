@@ -1,3 +1,4 @@
 gifiding.exe
-/storage
+/storage/*
+!.gitkeep
 config.json
