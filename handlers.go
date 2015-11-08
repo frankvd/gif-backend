@@ -34,7 +34,7 @@ func sendResponse(w http.ResponseWriter, status int, data interface{}) {
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	token, _ := jwt.ParseFromRequest(r, hmacKeyFunc)
 	issuer := token.Claims["iss"].(string)
-	fmt.Println(issuer)
+
 	gfForm, _, err := r.FormFile("gif")
 	overlayForm, _, err := r.FormFile("overlay")
 
@@ -76,7 +76,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 func imageHandler(w http.ResponseWriter, r *http.Request) {
 	token, _ := jwt.ParseFromRequest(r, hmacKeyFunc)
 	issuer := token.Claims["iss"].(string)
-	fmt.Println(issuer)
+
 	gfFile, err := os.Open(getFileName("gif:" + issuer))
 	overlayFile, err := os.Open(getFileName("overlay:" + issuer))
 
