@@ -4,7 +4,7 @@ GIF backend
 *Frontend: https://github.com/Vrenc/gif-frontend*
 
 ### Configuration
-Create a config file named `config.json`. See `config.example.json` for an example.
+Create a config file named `config.json`. See `config.example.json` for an example. `frontend_host` is used for the CORS header, use `*` if you're lazy.
 
 ### Docker Compose example
 ```
