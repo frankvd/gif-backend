@@ -1,0 +1,5 @@
+{
+    "hmac_secret": "super_secret_key",
+    "frontend_host": "*",
+    "redis_host": "127.0.01:6379"
+}
